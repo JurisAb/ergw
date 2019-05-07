@@ -104,6 +104,14 @@
 	     false
      end)(Expected, Actual) orelse error(badmatch)).
 
+-define(equal_loc(Expected, Actual, File, Line),
+    (fun (Expected@@@, Expected@@@) -> true;
+	 (Expected@@@, Actual@@@) ->
+	     ct:pal("MISMATCH(~s:~b, ~s)~nExpected: ~p~nActual:   ~p~n",
+		    [File, Line, ??Actual, Expected@@@, Actual@@@]),
+	     false
+     end)(Expected, Actual) orelse error(badmatch)).
+
 -define(not_equal(A, B),
     (fun (A@@@, A@@@) ->
 	     ct:pal("SHOULD NOT BE EQUAL(~s:~b, ~s, ~s)~nGot: ~p~n",
@@ -123,4 +131,18 @@
 		  end
 	  end)())).
 
+-define(match_loc(Guard, Expr, File, Line),
+	((fun () ->
+		  case (Expr) of
+		      Guard -> ok;
+		      V -> ct:pal("MISMATCH(~s:~b, ~s)~nExpected: ~p~nActual:   ~s~n",
+				  [File, Line, ??Expr, ??Guard,
+				   ergw_test_lib:pretty_print(V)]),
+			   error(badmatch)
+		  end
+	  end)())).
+
 -define(match_map(Expected, Actual), ergw_test_lib:match_map(Expected, Actual, ?FILE, ?LINE)).
+
+-define(check_aaa_invoke(AuthC, GxC, GyC, RfC, AcctC, OtherC),
+	ergw_test_lib:check_aaa_invoke(AuthC, GxC, GyC, RfC, AcctC, OtherC, ?FILE, ?LINE)).

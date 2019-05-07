@@ -37,6 +37,8 @@
 -export([has_ipv6_test_config/0]).
 -export([query_usage_report/2]).
 -export([match_map/4]).
+-export([classify_list/3]).
+-export([check_aaa_invoke/8]).
 
 -include("ergw_test_lib.hrl").
 -include_lib("common_test/include/ct.hrl").
@@ -560,4 +562,48 @@ match_map(Match, Map, File, Line) ->
 		      false
 	      end
       end, true, Match) orelse error(badmatch),
+    ok.
+
+classify_list(Pred, Classes, List)
+  when is_function(Pred, 1), is_integer(Classes), is_list(List) ->
+    Init = array:new([{size, Classes}, {fixed, true}, {default, []}]),
+    Result = do_classify_list(Pred, List, Init),
+    list_to_tuple(array:to_list(Result)).
+
+do_classify_list(_Pred, [], Init) ->
+    Init;
+do_classify_list(Pred, [H|T], Init) ->
+    Next = do_classify_list(Pred, T, Init),
+    case Pred(H) of
+	Class when is_integer(Class) ->
+	    array:set(Class, [H | array:get(Class, Next)], Next);
+	false ->
+	    Next
+    end.
+
+check_aaa_invoke(AuthC, GxC, GyC, RfC, AcctC, OtherC, File, Line) ->
+    {Auth, Gx, Gy, Rf, Acct, Other} =
+	classify_list(
+	  fun({_, {ergw_aaa_session, invoke, [_, _, authenticate, _]}, _}) ->
+		  0;
+	     ({_, {ergw_aaa_session, invoke, [_, _, {gx, _}, _]}, _}) ->
+		  1;
+	     ({_, {ergw_aaa_session, invoke, [_, _, {gy, _}, _]}, _}) ->
+		  2;
+	     ({_, {ergw_aaa_session, invoke, [_, _, {rf, _}, _]}, _}) ->
+		  3;
+	     ({_, {ergw_aaa_session, invoke, [_, _, Ev, _]}, _})
+		when Ev == start; Ev == stop ->
+		  4;
+	     ({_, {ergw_aaa_session, invoke, _}, _}) ->
+		  5;
+	     (_) ->
+		  false
+	  end, 6, meck:history(ergw_aaa_session)),
+    ?equal_loc(AuthC, length(Auth), File, Line),
+    ?equal_loc(GxC, length(Gx), File, Line),
+    ?equal_loc(GyC, length(Gy), File, Line),
+    ?equal_loc(RfC, length(Rf), File, Line),
+    ?equal_loc(AcctC, length(Acct), File, Line),
+    ?equal_loc(OtherC, length(Other), File, Line),
     ok.

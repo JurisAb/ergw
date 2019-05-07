@@ -624,6 +624,7 @@ create_session_request_aaa_reject() ->
 create_session_request_aaa_reject(Config) ->
     create_session(aaa_reject, Config),
 
+    ?check_aaa_invoke(1, 0, 0, 0, 0, 0),
     meck_validate(Config),
     ok.
 
@@ -633,6 +634,7 @@ create_session_request_gx_fail() ->
 create_session_request_gx_fail(Config) ->
     create_session(gx_fail, Config),
 
+    ?check_aaa_invoke(1, 1, 0, 0, 0, 0),
     meck_validate(Config),
     ok.
 
@@ -642,6 +644,7 @@ create_session_request_gy_fail() ->
 create_session_request_gy_fail(Config) ->
     create_session(gy_fail, Config),
 
+    ?check_aaa_invoke(1, 2, 1, 0, 0, 0),
     meck_validate(Config),
     ok.
 
@@ -694,6 +697,7 @@ create_session_request_pool_exhausted(Config) ->
 		     end),
     create_session(pool_exhausted, Config),
 
+    ?check_aaa_invoke(3, 0, 0, 0, 0, 0),
     ?equal([], outstanding_requests()),
     ok = meck:wait(?HUT, terminate, '_', ?TIMEOUT),
     meck_validate(Config),
@@ -903,6 +907,7 @@ simple_session_request(Config) ->
 	       }
 	 }, URR),
 
+    ?check_aaa_invoke(1, 2, 2, 2, 2, 0),
     meck_validate(Config),
     ok.
 

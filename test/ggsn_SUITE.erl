@@ -630,6 +630,7 @@ create_pdp_context_request_pool_exhausted(Config) ->
 		     end),
     create_pdp_context(pool_exhausted, Config),
 
+    ?check_aaa_invoke(3, 0, 0, 0, 0, 0),
     ?equal([], outstanding_requests()),
     meck_validate(Config),
     ok.
@@ -726,6 +727,7 @@ simple_pdp_context_request(Config) ->
     MetricsAfter = socket_counter_metrics(),
     delete_pdp_context(GtpC),
 
+    ?check_aaa_invoke(1, 2, 2, 2, 2, 0),
     ?equal([], outstanding_requests()),
     ok = meck:wait(?HUT, terminate, '_', ?TIMEOUT),
     meck_validate(Config),

@@ -534,6 +534,7 @@ create_session_request_pool_exhausted(Config) ->
 		     end),
     create_session(pool_exhausted, Config),
 
+    ?check_aaa_invoke(3, 0, 0, 0, 0, 0),
     ?equal([], outstanding_requests()),
     ok = meck:wait(?HUT, terminate, '_', ?TIMEOUT),
     meck_validate(Config),
@@ -558,6 +559,7 @@ simple_session_request(Config) ->
     {GtpC2, _, _} = modify_bearer(enb_u_tei, GtpC1),
     delete_session(GtpC2),
 
+    ?check_aaa_invoke(1, 2, 2, 2, 2, 0),
     ?equal([], outstanding_requests()),
     ok = meck:wait(?HUT, terminate, '_', ?TIMEOUT),
     meck_validate(Config),
