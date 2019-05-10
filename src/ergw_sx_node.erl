@@ -60,8 +60,8 @@ select_sx_node(Candidates, Context) ->
 
 select_sx_node(APN, Services, NodeSelect) ->
     case ergw_node_selection:candidates(APN, Services, NodeSelect) of
-	Nodes when is_list(Nodes), length(Nodes) /= 0 ->
-	    connect_sx_node(Nodes);
+	Candidates when is_list(Candidates), length(Candidates) /= 0 ->
+	    connect_sx_node(Candidates);
 	Other ->
 	    lager:error("No Sx node for APN '~w', got ~p", [APN, Other]),
 	    {error, not_found}
@@ -455,23 +455,44 @@ handle_udp_gtp(SrcIP, DstIP, <<SrcPort:16, DstPort:16, _:16, _:16, PayLoad/binar
 		 inet:ntoa(ergw_inet:bin2ip(DstIP)), DstPort, PayLoad]),
     ok.
 
-connect_sx_node([]) ->
+%% connect_sx_node/1
+connect_sx_node(Candidates) ->
+    PrefC = ergw_node_selection:candidates_by_preference(Candidates),
+    connect_sx_candidates(PrefC).
+
+%% connect_sx_candidates/1
+connect_sx_candidates([]) ->
     {error, not_found};
-connect_sx_node([{Node, _, _, IP4, IP6}|Next]) ->
-    case connect_sx_node(Node, IP4, IP6) of
+connect_sx_candidates([H|T]) ->
+    connect_sx_candidates(H, T).
+
+%% connect_sx_candidates/2
+connect_sx_candidates([], NextPrio) ->
+    connect_sx_candidates(NextPrio);
+connect_sx_candidates(List, NextPrio) ->
+    {Node, Next} = lb(random, List),
+    case connect_sx_node_1(Node) of
 	{ok, _Pid} = Result ->
 	    Result;
 	_ ->
-	    connect_sx_node(Next)
+	    connect_sx_candidates(Next, NextPrio)
     end.
 
-connect_sx_node(Node, IP4, IP6) ->
+%% connect_sx_node_1/1
+connect_sx_node_1({Node, IP4, IP6}) ->
     case ergw_sx_node_reg:lookup(Node) of
 	{ok, _} = Result ->
 	    Result;
 	_ ->
 	    ergw_sx_node_sup:new(Node, IP4, IP6)
     end.
+
+lb(first, [H|T]) -> {H, T};
+lb(random, [H]) -> {H, []};
+lb(random, L) when is_list(L) ->
+    Index = rand:uniform(length(L)),
+    Item = lists:nth(Index, L),
+    {Item, L -- Item}.
 
 response_cb(CbData) ->
     {?MODULE, response, [self(), CbData]}.
